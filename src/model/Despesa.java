@@ -1,6 +1,7 @@
 package model;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -9,30 +10,33 @@ import java.util.Objects;
 
 public abstract class Despesa implements Serializable {
     private static final long serialVersionUID = 1L;
+    // acima disso o rateio em centavos não cabe num long
+    private static final BigDecimal VALOR_MAXIMO = new BigDecimal("999999999.99");
 
     private String id;
     private String descricao;
-    private double valorInformado;
+    private BigDecimal valorInformado;
     private List<Participante> participantesInvolucrados;
     private boolean essencial;
     private int prioridade;
 
-    public Despesa(String id, String descricao, double valorInformado, List<Participante> participantes, boolean essencial, int prioridade) {
+    public Despesa(String id, String descricao, BigDecimal valorInformado, List<Participante> participantes, boolean essencial, int prioridade) throws ValidacaoException {
         if (id == null || id.trim().isEmpty()) {
-            throw new IllegalArgumentException("ID da despesa inválido.");
+            throw new ValidacaoException("ID da despesa inválido.");
         }
         if (descricao == null || descricao.trim().isEmpty()) {
-            throw new IllegalArgumentException("Descrição da despesa é obrigatória.");
+            throw new ValidacaoException("Descrição da despesa é obrigatória.");
         }
-        if (valorInformado <= 0) {
-            throw new IllegalArgumentException("O valor da despesa deve ser maior que zero.");
-        }
+        validarValor(valorInformado);
         if (participantes == null || participantes.isEmpty()) {
-            throw new IllegalArgumentException("A despesa deve ter pelo menos um participante cadastrado.");
+            throw new ValidacaoException("A despesa deve ter pelo menos um participante cadastrado.");
         }
-        this.id = id;
+        if (!essencial && prioridade < 1) {
+            throw new ValidacaoException("A prioridade de uma despesa opcional deve ser um número inteiro maior ou igual a 1.");
+        }
+        this.id = id.trim();
         this.descricao = descricao.trim();
-        this.valorInformado = valorInformado;
+        this.valorInformado = valorInformado.setScale(2);
 
         List<Participante> semDuplicados = new ArrayList<>();
         for (Participante p : participantes) {
@@ -47,28 +51,38 @@ public abstract class Despesa implements Serializable {
 
     public String getId() { return id; }
     public String getDescricao() { return descricao; }
-    public double getValorInformado() { return valorInformado; }
+    public BigDecimal getValorInformado() { return valorInformado; }
     public List<Participante> getParticipantesInvolucrados() { return Collections.unmodifiableList(participantesInvolucrados); }
     public boolean isEssencial() { return essencial; }
     public int getPrioridade() { return prioridade; }
 
-    public void setDescricao(String descricao) {
+    public void setDescricao(String descricao) throws ValidacaoException {
         if (descricao == null || descricao.trim().isEmpty()) {
-            throw new IllegalArgumentException("Descrição da despesa é obrigatória.");
+            throw new ValidacaoException("Descrição da despesa é obrigatória.");
         }
         this.descricao = descricao.trim();
     }
 
-    public void setValorInformado(double valorInformado) {
-        if (valorInformado <= 0) {
-            throw new IllegalArgumentException("O valor da despesa deve ser maior que zero.");
-        }
-        this.valorInformado = valorInformado;
+    public void setValorInformado(BigDecimal valorInformado) throws ValidacaoException {
+        validarValor(valorInformado);
+        this.valorInformado = valorInformado.setScale(2);
     }
 
-    public void setParticipantesInvolucrados(List<Participante> participantes) {
+    private static void validarValor(BigDecimal valor) throws ValidacaoException {
+        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidacaoException("O valor da despesa deve ser maior que zero.");
+        }
+        if (valor.stripTrailingZeros().scale() > 2) {
+            throw new ValidacaoException("O valor da despesa deve ter no máximo duas casas decimais.");
+        }
+        if (valor.compareTo(VALOR_MAXIMO) > 0) {
+            throw new ValidacaoException("O valor da despesa deve ser de no máximo R$ 999.999.999,99.");
+        }
+    }
+
+    public void setParticipantesInvolucrados(List<Participante> participantes) throws ValidacaoException {
         if (participantes == null || participantes.isEmpty()) {
-            throw new IllegalArgumentException("A despesa deve ter pelo menos um participante.");
+            throw new ValidacaoException("A despesa deve ter pelo menos um participante.");
         }
         List<Participante> semDuplicados = new ArrayList<>();
         for (Participante p : participantes) {
@@ -83,7 +97,7 @@ public abstract class Despesa implements Serializable {
     public void setPrioridade(int prioridade) { this.prioridade = prioridade; }
 
     public abstract String getTipo();
-    public abstract Map<Participante, Double> calcularRateio();
+    public abstract Map<Participante, BigDecimal> calcularRateio();
 
     @Override
     public boolean equals(Object o) {
