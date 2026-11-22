@@ -1,6 +1,7 @@
 package model;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Objects;
 
 public class Participante implements Serializable, Comparable<Participante> {
@@ -8,40 +9,51 @@ public class Participante implements Serializable, Comparable<Participante> {
 
     private int codigo;
     private String nome;
-    private double orcamentoDisponivel;
+    private BigDecimal orcamentoDisponivel;
 
-    public Participante(int codigo, String nome, double orcamentoDisponivel) {
+    public Participante(int codigo, String nome, BigDecimal orcamentoDisponivel) throws ValidacaoException {
         if (codigo <= 0) {
-            throw new IllegalArgumentException("O código do participante deve ser maior que zero.");
+            throw new ValidacaoException("O código do participante deve ser maior que zero.");
         }
         if (nome == null || nome.trim().isEmpty()) {
-            throw new IllegalArgumentException("O nome do participante não pode ser vazio.");
+            throw new ValidacaoException("O nome do participante não pode ser vazio.");
         }
-        if (orcamentoDisponivel < 0) {
-            throw new IllegalArgumentException("O orçamento disponível deve ser maior ou igual a zero.");
+        if (orcamentoDisponivel == null || orcamentoDisponivel.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidacaoException("O orçamento disponível deve ser maior ou igual a zero.");
+        }
+        if (orcamentoDisponivel.stripTrailingZeros().scale() > 2) {
+            throw new ValidacaoException("O orçamento deve ter no máximo duas casas decimais.");
         }
         this.codigo = codigo;
         this.nome = nome.trim();
-        this.orcamentoDisponivel = orcamentoDisponivel;
+        this.orcamentoDisponivel = orcamentoDisponivel.setScale(2);
     }
 
     public int getCodigo() { return codigo; }
     public String getNome() { return nome; }
 
-    public void setNome(String nome) {
+    public void setNome(String nome) throws ValidacaoException {
         if (nome == null || nome.trim().isEmpty()) {
-            throw new IllegalArgumentException("O nome do participante não pode ser vazio.");
+            throw new ValidacaoException("O nome do participante não pode ser vazio.");
         }
         this.nome = nome.trim();
     }
 
-    public double getOrcamentoDisponivel() { return orcamentoDisponivel; }
+    public BigDecimal getOrcamentoDisponivel() { return orcamentoDisponivel; }
 
-    public void setOrcamentoDisponivel(double orcamentoDisponivel) {
-        if (orcamentoDisponivel < 0) {
-            throw new IllegalArgumentException("O orçamento disponível não pode ser negativo.");
+    public void setOrcamentoDisponivel(BigDecimal orcamentoDisponivel) throws ValidacaoException {
+        if (orcamentoDisponivel == null || orcamentoDisponivel.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidacaoException("O orçamento disponível não pode ser negativo.");
         }
-        this.orcamentoDisponivel = orcamentoDisponivel;
+        if (orcamentoDisponivel.stripTrailingZeros().scale() > 2) {
+            throw new ValidacaoException("O orçamento deve ter no máximo duas casas decimais.");
+        }
+        this.orcamentoDisponivel = orcamentoDisponivel.setScale(2);
+    }
+
+    public BigDecimal calcularExcesso(BigDecimal gasto) {
+        BigDecimal excesso = gasto.subtract(orcamentoDisponivel);
+        return excesso.compareTo(BigDecimal.ZERO) > 0 ? excesso : BigDecimal.ZERO.setScale(2);
     }
 
     @Override

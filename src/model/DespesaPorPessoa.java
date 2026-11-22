@@ -1,11 +1,12 @@
 package model;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 public class DespesaPorPessoa extends Despesa {
     private static final long serialVersionUID = 1L;
 
-    public DespesaPorPessoa(String id, String descricao, double valorUnitario, List<Participante> participantes, boolean essencial, int prioridade) {
+    public DespesaPorPessoa(String id, String descricao, BigDecimal valorUnitario, List<Participante> participantes, boolean essencial, int prioridade) throws ValidacaoException {
         super(id, descricao, valorUnitario, participantes, essencial, prioridade);
     }
 
@@ -15,8 +16,8 @@ public class DespesaPorPessoa extends Despesa {
     }
 
     @Override
-    public Map<Participante, Double> calcularRateio() {
-        Map<Participante, Double> rateio = new HashMap<>();
+    public Map<Participante, BigDecimal> calcularRateio() {
+        Map<Participante, BigDecimal> rateio = new HashMap<>();
         for (Participante p : getParticipantesInvolucrados()) {
             rateio.put(p, getValorInformado());
         }
